@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane fx:id="mainPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="480.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="grivegui.controller.Controller">
+    <top>
+        <HBox alignment="CENTER" prefHeight="49.0" prefWidth="600.0" BorderPane.alignment="CENTER">
+            <children>
+                <ComboBox fx:id="folderCB" prefHeight="28.0" prefWidth="330.0" promptText="Click &quot;Set up&quot; to add your Google Drive path">
+                    <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                    </HBox.margin>
+                </ComboBox>
+                <Button fx:id="setUpBtn" mnemonicParsing="false" text="Set up">
+                    <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                    </HBox.margin>
+                </Button>
+            </children>
+            <BorderPane.margin>
+                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+            </BorderPane.margin>
+        </HBox>
+    </top>
+    <center>
+        <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+            <children>
+            <Button fx:id="initBtn" mnemonicParsing="false" text="Initialize">
+               <HBox.margin>
+                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+               </HBox.margin>
+            </Button>
+                <Button fx:id="upldBtn" mnemonicParsing="false" text="Upload">
+                    <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                    </HBox.margin>
+                </Button>
+                <Button fx:id="dwldBtn" mnemonicParsing="false" text="Download">
+                    <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                    </HBox.margin>
+                </Button>
+                <Button fx:id="syncBtn" mnemonicParsing="false" text="Sync">
+                    <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                    </HBox.margin>
+                </Button>
+                <Button fx:id="diffBtn" mnemonicParsing="false" text="Diff">
+                    <HBox.margin>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                    </HBox.margin>
+                </Button>
+            </children>
+        </HBox>
+    </center>
+   <bottom>
+      <VBox prefHeight="200.0" prefWidth="100.0" BorderPane.alignment="CENTER">
+         <children>
+            <HBox prefHeight="100.0" prefWidth="200.0" />
+            <TextField fx:id="tokenTF" promptText="Insert your authentication token" visible="false">
+               <VBox.margin>
+                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+               </VBox.margin>
+            </TextField>
+            <Button fx:id="initConfirmBtn" alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" text="Confirm initialization" visible="false">
+               <VBox.margin>
+                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+               </VBox.margin>
+            </Button>
+              <TextArea fx:id="termTA" editable="false" minHeight="200.0" prefHeight="300.0" prefWidth="600.0" text="Select an action!">
+                  <font>
+                      <Font name="Monospaced Regular" size="13.0" />
+                  </font>
+               <VBox.margin>
+                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+               </VBox.margin>
+              </TextArea>
+         </children>
+      </VBox>
+   </bottom>
+</BorderPane>
