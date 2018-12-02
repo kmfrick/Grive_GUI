@@ -1,2 +1,5 @@
+# IDE
 .idea/
 grive-gui.iml
+# Compilation output
+out/
