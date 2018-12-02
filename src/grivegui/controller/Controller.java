@@ -1,30 +1,24 @@
 package grivegui.controller;
 
+import grivegui.model.Grive;
 import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.Window;
 
 import java.io.*;
 
 public class Controller {
+    public static final String CONFIG_FILE = System.getProperty("user.home") + "/.grive-gui/grive-gui.conf";
     private static final String DRIVE_FOLDER = "Select your Google Drive folder";
-    private static final String GRIVE_CMD = "grive";
     private static final String DRY_RUN = "--dry-run";
     private static final String UPLOAD = "-u";
     private static final String DOWNLOAD = "-n";
     private static final String INIT = "-a";
-    private static final String PATH = "-p";
-    private static final String CONFIG_FILE = System.getProperty("user.home") + "/.grive-gui/grive-gui.conf";
-    private static final String INVALID_PATH = " is not a valid filepath.";
+    private static final String ERR_PROC_OUT = "Error reading process output";
     private static final String ERR_CONF_RD = "Error reading config file.";
-    private static final String ERR_CONF_WR = "Error appending line to config file.";
-    private static final String ERR_CONF_CREATE = "Error creating config file.";
-    private static final String NO_GRIVE_PATH = "No Grive path set.";
-    public static final String INVALID_TOKEN = " is not a valid authorization token.";
-
     @FXML
     private Button setUpBtn;
     @FXML
@@ -49,148 +43,119 @@ public class Controller {
     private BorderPane mainPane;
 
     private String grivePathStr;
-
-    private File grivePath;
-    private OutputStream griveOutputStream;
-    private InputStream griveInputStream;
     private Process grive;
-
 
     public Controller() {
     }
 
-    private void readConf() {
-        createConf();
+    private static String readConf(ComboBox<String> folderCB) {
+        Grive.createConf();   // Creates config files in user home if they do not exist
         try (BufferedReader f = new BufferedReader(new FileReader(CONFIG_FILE))) {
             String line;
             while ((line = f.readLine()) != null) {
                 if (!folderCB.getItems().contains(line)) {
-                    folderCB.getItems().add(line);
+                    folderCB.getItems().add(line);  // Adds every previous Grive path to the relevant combo box
                 }
                 folderCB.setValue(line);
-                grivePathStr = folderCB.getValue();
             }
         } catch (IOException e) {
             new Alert(Alert.AlertType.ERROR, ERR_CONF_RD).show();
         }
+        return folderCB.getValue();
     }
 
-    private void createConf() {
-        File configFile = new File(CONFIG_FILE);
-        try {
-            if (!configFile.isFile()) {
-                configFile.getParentFile().mkdirs();
-                configFile.createNewFile();
+    private static String addNewDir(ComboBox<String> folderCB, DirectoryChooser directoryChooser, Window window) {
+        File path = directoryChooser.showDialog(window);
+        String pathStr = path.getAbsolutePath();
+        if (!folderCB.getItems().contains(pathStr)) {
+            folderCB.getItems().add(pathStr);
+        }
+        folderCB.setValue(pathStr);
+        Grive.appendToConf(CONFIG_FILE, pathStr);
+        return pathStr;
+    }
+
+    private static void bindInputToTextField(TextField textField, Process process) {
+        Thread inputFromToken = new Thread(() -> {
+
+            try (PrintWriter in = new PrintWriter(new OutputStreamWriter(process.getOutputStream()))) {
+                in.println(textField.getText());
             }
-        } catch (IOException e) {
-            new Alert(Alert.AlertType.ERROR, ERR_CONF_CREATE);
-        }
+        });
+        inputFromToken.start();
     }
 
-    private void chooseDriveDir(DirectoryChooser directoryChooser) {
-        try {
-            grivePath = directoryChooser.showDialog(setUpBtn.getScene().getWindow());
-            grivePathStr = grivePath.getAbsolutePath();
-        } catch (NullPointerException e) {
-            new Alert(Alert.AlertType.ERROR, NO_GRIVE_PATH);
-        }
-        if (!folderCB.getItems().contains(grivePathStr)) {
-            folderCB.getItems().add(grivePathStr);
-        }
-        folderCB.setValue(grivePathStr);
-        writeGrivePathToConf();
-    }
-
-    private void writeGrivePathToConf() {
-        try (PrintWriter f = new PrintWriter(new FileWriter(CONFIG_FILE))) {
-            f.println(grivePathStr);
-        } catch (IOException e) {
-            new Alert(Alert.AlertType.ERROR, ERR_CONF_WR).show();
-        } catch (NullPointerException e) {
-            new Alert(Alert.AlertType.ERROR, NO_GRIVE_PATH);
-        }
-    }
-
-
-    private void runProcessLoggingOnTermTA(ProcessBuilder griveBuilder) throws IOException {
-        griveBuilder.redirectErrorStream(true);
-        grive = griveBuilder.start();
-        griveInputStream = grive.getInputStream();
-        griveOutputStream = grive.getOutputStream();
-
+    private static Process redirectOutputToTextArea(Process process, TextArea outputTA) {
+        // Input and output are run on separate threads
+        // Output to TextArea is implemented here
+        // Input from TextField is implemented in bindInputToTextField()
         Thread outputToTA = new Thread(() -> {
-            try (BufferedReader out = new BufferedReader(new InputStreamReader(griveInputStream))) {
+            try (BufferedReader out = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = out.readLine()) != null) {
-                    termTA.appendText(line + "\n");
+                    outputTA.appendText(line + "\n");
                 }
             } catch (IOException e) {
-                new Alert(Alert.AlertType.ERROR, "Error reading process output").show();
+                new Alert(Alert.AlertType.ERROR, ERR_PROC_OUT).show();
             }
 
         });
         outputToTA.start();
+        return process;
     }
 
-    private void runGriveOnPathWithArguments(String grivePath, String arg) {
+    private static Process runClearingUI(Controller controller, String arg) {
+        controller.clearUI();
+        Process proc = null;
+        try {
+            proc = Grive.run(controller.grivePathStr, arg);
+        } catch (IOException e) {
+            new Alert(Alert.AlertType.ERROR, controller.grivePathStr + Grive.INVALID_PATH).show();
+        }
+        return proc;
+    }
+
+    private void clearUI() {
         tokenTF.setVisible(false);
         initConfirmBtn.setVisible(false);
-        try {
-            if (grivePath.length() > 0) {
-                termTA.clear();
-                ProcessBuilder griveBuilder = new ProcessBuilder(GRIVE_CMD, PATH + grivePath, arg);
-                try {
-                    runProcessLoggingOnTermTA(griveBuilder);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                termTA.setText(grivePath + INVALID_PATH);
-            }
-        } catch (NullPointerException e) {
-            new Alert(Alert.AlertType.ERROR, grivePath + INVALID_PATH).show();
-        }
+        termTA.clear();
     }
 
+    private void startGrive(String arg) {
+        Process process = runClearingUI(this, arg);
+        grive = redirectOutputToTextArea(process, termTA);
+    }
 
     public void initialize() {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle(DRIVE_FOLDER);
 
-        readConf();
-
-        folderCB.setOnAction(e -> grivePathStr = folderCB.getValue());
-        setUpBtn.setOnAction(e -> chooseDriveDir(directoryChooser));
-        diffBtn.setOnAction(event -> runGriveOnPathWithArguments(grivePathStr, DRY_RUN));
-        syncBtn.setOnAction(event -> runGriveOnPathWithArguments(grivePathStr, ""));
-        dwldBtn.setOnAction(event -> runGriveOnPathWithArguments(grivePathStr, DOWNLOAD));
-        upldBtn.setOnAction(event -> runGriveOnPathWithArguments(grivePathStr, UPLOAD));
+        grivePathStr = readConf(folderCB);
+        folderCB.setOnAction(e -> {
+            clearUI();
+            grivePathStr = folderCB.getValue();
+        });
+        setUpBtn.setOnAction(e -> {
+            clearUI();
+            grivePathStr = addNewDir(folderCB, directoryChooser, setUpBtn.getScene().getWindow());
+        });
+        diffBtn.setOnAction(event -> startGrive(DRY_RUN));
+        syncBtn.setOnAction(event -> startGrive(""));
+        dwldBtn.setOnAction(event -> startGrive(DOWNLOAD));
+        upldBtn.setOnAction(event -> startGrive(UPLOAD));
         initBtn.setOnAction(event -> {
-            runGriveOnPathWithArguments(grivePathStr, INIT);
+            startGrive(INIT);
             initConfirmBtn.setVisible(true);
             tokenTF.setVisible(true);
         });
         initConfirmBtn.setOnAction(e -> {
-            Thread inputFromToken = new Thread(() -> {
-                tokenTF.setVisible(false);
-                initConfirmBtn.setVisible(false);
-                try (PrintWriter in = new PrintWriter(new OutputStreamWriter(griveOutputStream))) {
-                    in.println(tokenTF.getText());
-                }
-            });
-            inputFromToken.start();
+            tokenTF.setVisible(false);
+            initConfirmBtn.setVisible(false);
+            bindInputToTextField(tokenTF, grive);
         });
 
-        termTA.textProperty().addListener(new ChangeListener<Object>() {
-            @Override
-            public void changed(ObservableValue<?> observable, Object oldValue,
-                                Object newValue) {
-                termTA.setScrollTop(Double.MAX_VALUE); //this will scroll to the bottom
-                //use Double.MIN_VALUE to scroll to the tops
-            }
-        });
-
-
+        termTA.textProperty().addListener((ChangeListener<Object>) (observable, oldValue, newValue) ->  // Autoscroll
+                termTA.setScrollTop(Double.MAX_VALUE));
     }
 
 
