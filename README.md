@@ -1,4 +1,4 @@
-# grive-gui
+# Grive_GUI
 
 This is a graphical user interface for [grive2](https://github.com/vitalif/grive2) written using JavaFX.
 
